@@ -792,7 +792,7 @@ PlayerSettings:
   webGLPowerPreference: 2
   scriptingDefineSymbols:
     Standalone: DOTS_ADD_PARTIAL_KEYWORD
-    WebGL: DOTS_ADD_PARTIAL_KEYWORD
+    WebGL: 
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}
