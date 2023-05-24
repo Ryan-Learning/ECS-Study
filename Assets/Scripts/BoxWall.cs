@@ -12,8 +12,7 @@ using System.Linq;
 //#if UNITY_EDITOR
 //執行階段執行     [ExecuteAlways]
 //#endif
-//依賴項           [RequireComponent(typeof CLASS)]
-
+[RequireComponent(typeof(BoxCollider))]
 [ExecuteAlways]
 public class BoxWall : MonoBehaviour
 {
@@ -21,6 +20,7 @@ public class BoxWall : MonoBehaviour
     [Min(1)] public int heightCount = 500;
     [Min(1)] public int weightCount = 500;
     [Min(1)] public int depthCount = 100;
+    public int totalCount;
     public bool isRandom;
 
     public float bx;
@@ -47,6 +47,7 @@ public class BoxWall : MonoBehaviour
     {
         ClearBox();
         Collider collider = GetComponent<Collider>();
+        totalCount = heightCount * weightCount * depthCount;
 
         Vector3 uniV3 = ConvertToUnit(collider);
         for (int i = 0; i < heightCount; i++) {
