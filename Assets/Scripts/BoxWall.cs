@@ -7,13 +7,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using Unity.Mathematics;
+
+using Unity.Collections;
+using Unity.Jobs;
 
 //禁止多載         [DisallowMultipleComponent]
 //#if UNITY_EDITOR
 //執行階段執行     [ExecuteAlways]
 //#endif
 [RequireComponent(typeof(BoxCollider))]
-[ExecuteAlways]
+//[ExecuteAlways]
 public class BoxWall : MonoBehaviour
 {
     public GameObject box;
@@ -22,10 +26,10 @@ public class BoxWall : MonoBehaviour
     [Min(1)] public int depthCount = 100;
     public int totalCount;
     public bool isRandom;
-
-    public float bx;
-    public float by;
-    public float bz;
+    public List<RotationSelf> items;
+    //ESC
+    public List<BoxData> m_SelfDatas;
+    //ESC
 
     Vector3 ConvertToUnit(Collider collider)
     {
@@ -38,9 +42,28 @@ public class BoxWall : MonoBehaviour
 
     void Update()
     {
-        bx = GetComponent<Collider>().bounds.size.x;
-        by = GetComponent<Collider>().bounds.size.y;
-        bz = GetComponent<Collider>().bounds.size.z;
+        //ESC
+        m_SelfDatas = new List<BoxData>();
+        items.ForEach(m => m_SelfDatas.Add(new BoxData(m.transform, Time.deltaTime)));
+        //ESC
+
+        //DOTS
+        NativeArray<BoxData> nativeList = new NativeArray<BoxData>(m_SelfDatas.ToArray(), Allocator.TempJob);
+        BoxDataJob job = new BoxDataJob(nativeList);
+        for (int i = 0; i < nativeList.Length; i++) {
+            job.Execute(i);
+        }
+
+        JobHandle jobHandle = job.Schedule(nativeList.Length, 100);
+        jobHandle.Complete();
+
+        float n = Time.deltaTime * 10f * 100f;
+        for (int i = 0; i < nativeList.Length; i++) {
+            items[i].transform.eulerAngles += new Vector3(n, n, n);
+        }
+
+        nativeList.Dispose();
+        //DOTS
     }
 
     public void CreatBox()
@@ -50,11 +73,14 @@ public class BoxWall : MonoBehaviour
         totalCount = heightCount * weightCount * depthCount;
 
         Vector3 uniV3 = ConvertToUnit(collider);
+        items = new List<RotationSelf>();
+
         for (int i = 0; i < heightCount; i++) {
             for (int j = 0; j < weightCount; j++) {
                 for (int k = 0; k < depthCount; k++) {
-                    Quaternion randomRotation = isRandom ? Quaternion.Euler(new Vector3(Random.Range(0f, 360f), Random.Range(0f, 360f), Random.Range(0f, 360f))) : new Quaternion();
-                    Instantiate(box, collider.bounds.min + new Vector3(i * uniV3.x, j * uniV3.y, k * uniV3.z), randomRotation, transform);
+                    Quaternion randomRotation = isRandom ? Quaternion.Euler(new Vector3(UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(0f, 360f), UnityEngine.Random.Range(0f, 360f))) : new Quaternion();
+                    GameObject go = Instantiate(box, collider.bounds.min + new Vector3(i * uniV3.x, j * uniV3.y, k * uniV3.z), randomRotation, transform);
+                    items.Add(go.GetComponent<RotationSelf>());
                 }
             }
         }
@@ -67,13 +93,39 @@ public class BoxWall : MonoBehaviour
         }
     }
 
-#if UNITY_EDITOR
-    void OnValidate()
-    {
-        //CreatBox();
-    }
-    //void OnDrawGizmos() { }
-    //private void OnDrawGizmosSelected() { }
-#endif
+}
 
+
+public struct BoxData
+{
+    public float _speed;
+    public float _delfaTime;
+    public float3 _rotation;
+
+    public BoxData(Transform self, float deltaTime)
+    {
+        _speed = UnityEngine.Random.Range(1, 15);
+        _delfaTime = deltaTime;
+        _rotation = self.eulerAngles;
+    }
+
+    public void CalculateUpdate()
+    {
+        _rotation += new float3(_delfaTime * _speed * 100f);
+    }
+}
+
+public struct BoxDataJob : IJobParallelFor
+{
+    public NativeArray<BoxData> dataList;
+
+    public BoxDataJob(NativeArray<BoxData> list)
+    {
+        dataList = list;
+    }
+
+    public void Execute(int index)
+    {
+        dataList[index].CalculateUpdate();
+    }
 }
