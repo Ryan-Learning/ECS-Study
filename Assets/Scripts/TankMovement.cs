@@ -23,10 +23,19 @@ public class TankMovement : MonoBehaviour
 
     void Update()
     {
-        tankf.DoMovement();
+        if (!tankf.isCollision) {
+            tankf.DoMovement();
+        }
+        else {
+            tankf.DoPrev();
+        }
         if (keys.DoShoot()) {
             bulletController.Shoot();
         }
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.tag == "WallArea") tankf.isCollision = true;
     }
 
     public void OnDrawGizmos()
@@ -79,14 +88,19 @@ public class CustomKey : ICustomKey
 public interface ITankForce
 {
     void DoMovement();
+    void DoPrev();
+    bool isCollision { get; set; }
 }
 
 
 public class TankForce : ITankForce
 {
     public ICustomKey keys;
+    public bool isCollision { get; set; }
     private TankMovement tankMovement;
     private Transform tf;
+    private Vector3 prev;
+
 
     public TankForce(ICustomKey keys, Transform tf)
     {
@@ -98,20 +112,27 @@ public class TankForce : ITankForce
     public void DoMovement()
     {
         Hashtable code = keys.GetCode();
-        float h = Input.GetAxis("Horizontal");
-        float v = Input.GetAxis("Vertical");
+        float moveX = Input.GetAxis("Horizontal");
+        float moveY = Input.GetAxis("Vertical");
         float runSpeed = tankMovement.runSpeed;
         float rotateSpeed = tankMovement.rotateSpeed;
         float delta = Time.deltaTime;
 
         if (Check("W", "S")) {
-            float positionAmount = v * runSpeed * delta;
+            float positionAmount = moveY * runSpeed * delta;
+            prev = tf.localPosition;
             tf.localPosition += tf.TransformDirection(Vector3.forward) * positionAmount;
         }
         if (Check("A", "D")) {
-            float rotationAmount = h * rotateSpeed * delta;
+            float rotationAmount = moveX * rotateSpeed * delta;
             tf.Rotate(Vector3.up, rotationAmount);
         }
+    }
+
+    public void DoPrev()
+    {
+        tf.localPosition = prev;
+        isCollision = false;
     }
 
     bool Check(params string[] pars)
